@@ -149,3 +149,28 @@ func TestZSet(t *testing.T) {
 		t.Fatal("zremrangebyscore faild")
 	}
 }
+
+func TestOnCmd(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+		OnPreCmd: func(ctx context.Context, args []interface{}) context.Context {
+			if len(args) == 0 {
+				t.Fatal("OnPre failed")
+			}
+
+			return context.WithValue(ctx, "foo", "bar")
+		},
+		OnPostCmd: func(ctx context.Context, err error) {
+			if ctx.Value("foo").(string) != "bar" {
+				t.Fatal("OnPostCmd failed")
+			}
+		},
+	})
+
+	if err := c.Del(ctx, "foo"); err != nil {
+		t.Fatal("start faild")
+	}
+
+	c.Set(ctx, &Item{Key: "foo", Value: []byte("123"), Flags: FlagXX})
+}

@@ -25,9 +25,13 @@ type Options struct {
 	IdleTimeout time.Duration
 
 	IdleCheckFrequency time.Duration
+
+	OnPreCmd  func(context.Context, []interface{}) context.Context
+	OnPostCmd func(context.Context, error)
 }
 
 type Client struct {
+	opts Options
 	pool pool.Pooler
 }
 
@@ -57,7 +61,7 @@ func New(opts Options) Client {
 		return &rw, nil
 	}
 
-	return Client{pool: pool.New(poolOpts)}
+	return Client{pool: pool.New(poolOpts), opts: opts}
 }
 
 type redisConn struct {
@@ -93,7 +97,11 @@ type Item struct {
 
 var noDeadline = time.Time{}
 
-func (c *Client) do(ctx context.Context, cmd string, fn func(conn *redisConn) error) error {
+func (c *Client) do(ctx context.Context, args []interface{}, fn func(conn *redisConn) error) error {
+	if c.opts.OnPreCmd != nil {
+		ctx = c.opts.OnPreCmd(ctx, args)
+	}
+
 	conn, err := c.pool.Get(ctx)
 	if err != nil {
 		return err
@@ -123,14 +131,16 @@ func (c *Client) do(ctx context.Context, cmd string, fn func(conn *redisConn) er
 	// 此处赋值给 defer 函数用的，不要去掉
 	err = fn(rc)
 
+	if c.opts.OnPostCmd != nil {
+		c.opts.OnPostCmd(ctx, err)
+	}
+
 	return err
 }
 
 func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
-	cmd := "get"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key}
-
+	args := []interface{}{"get", key}
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -153,15 +163,14 @@ func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
 }
 
 func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Item, err error) {
-	cmd := "mget"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := make([]interface{}, 0, len(keys)+1)
+	args := make([]interface{}, 0, len(keys)+1)
 
-		args = append(args, cmd)
-		for _, key := range keys {
-			args = append(args, key)
-		}
+	args = append(args, "mget")
+	for _, key := range keys {
+		args = append(args, key)
+	}
 
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -194,9 +203,8 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 }
 
 func (c *Client) Set(ctx context.Context, item *Item) error {
-	cmd := "set"
 	args := make([]interface{}, 0, 6)
-	args = append(args, cmd, item.Key, item.Value)
+	args = append(args, "set", item.Key, item.Value)
 
 	if item.TTL > 0 {
 		args = append(args, "expiration", "EX", item.TTL)
@@ -208,7 +216,7 @@ func (c *Client) Set(ctx context.Context, item *Item) error {
 		args = append(args, "XX")
 	}
 
-	return c.do(ctx, cmd, func(conn *redisConn) error {
+	return c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -227,15 +235,14 @@ func (c *Client) Set(ctx context.Context, item *Item) error {
 }
 
 func (c *Client) Del(ctx context.Context, keys ...string) error {
-	cmd := "del"
 	args := make([]interface{}, 0, 1+len(keys))
 
-	args = append(args, cmd)
+	args = append(args, "del")
 	for _, key := range keys {
 		args = append(args, key)
 	}
 
-	return c.do(ctx, cmd, func(conn *redisConn) error {
+	return c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -251,9 +258,9 @@ func (c *Client) Del(ctx context.Context, keys ...string) error {
 }
 
 func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err error) {
-	cmd := "incrby"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, by}
+	args := []interface{}{"incrby", key, by}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 
 		if err = conn.w.WriteArgs(args); err != nil {
 			return err
@@ -276,9 +283,9 @@ func (c *Client) DecrBy(ctx context.Context, key string, by int64) (int64, error
 }
 
 func (c *Client) Expire(ctx context.Context, key string, ttl int32) error {
-	cmd := "expire"
-	return c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, ttl}
+	args := []interface{}{"expire", key, ttl}
+
+	return c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -294,9 +301,9 @@ func (c *Client) Expire(ctx context.Context, key string, ttl int32) error {
 }
 
 func (c *Client) TTL(ctx context.Context, key string) (ttl int32, err error) {
-	cmd := "ttl"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key}
+	args := []interface{}{"ttl", key}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -325,9 +332,8 @@ func (c *Client) TTL(ctx context.Context, key string) (ttl int32, err error) {
 }
 
 func (c *Client) ZAdd(ctx context.Context, item *Item) (added int64, err error) {
-	cmd := "zadd"
 	args := make([]interface{}, 0, 4+len(item.ZSetValues))
-	args = append(args, cmd, item.Key)
+	args = append(args, "zadd", item.Key)
 
 	if item.Flags&FlagNX > 0 {
 		args = append(args, "NX")
@@ -343,7 +349,7 @@ func (c *Client) ZAdd(ctx context.Context, item *Item) (added int64, err error) 
 		args = append(args, score, member)
 	}
 
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -364,9 +370,9 @@ func (c *Client) ZAdd(ctx context.Context, item *Item) (added int64, err error) 
 }
 
 func (c *Client) ZIncrBy(ctx context.Context, key, member string, by float64) error {
-	cmd := "zincrby"
-	return c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, by, member}
+	args := []interface{}{"zincrby", key, by, member}
+
+	return c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -389,9 +395,9 @@ func (c *Client) ZRevRange(ctx context.Context, key string, start, stop int64) (
 }
 
 func (c *Client) zrange(ctx context.Context, cmd, key string, start, stop int64) (values []*ZSetValue, err error) {
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, start, stop, "WITHSCORES"}
+	args := []interface{}{cmd, key, start, stop, "WITHSCORES"}
 
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -433,8 +439,9 @@ func (c *Client) ZRevRank(ctx context.Context, key, member string) (rank int64, 
 }
 
 func (c *Client) zrank(ctx context.Context, cmd, key, member string) (rank int64, err error) {
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, member}
+	args := []interface{}{cmd, key, member}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -451,9 +458,9 @@ func (c *Client) zrank(ctx context.Context, cmd, key, member string) (rank int64
 }
 
 func (c *Client) ZScore(ctx context.Context, key, member string) (score float64, err error) {
-	cmd := "zscore"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, member}
+	args := []interface{}{"zscore", key, member}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -470,9 +477,9 @@ func (c *Client) ZScore(ctx context.Context, key, member string) (score float64,
 }
 
 func (c *Client) ZCard(ctx context.Context, key string) (card int64, err error) {
-	cmd := "zcard"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key}
+	args := []interface{}{"zcard", key}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -489,9 +496,9 @@ func (c *Client) ZCard(ctx context.Context, key string) (card int64, err error) 
 }
 
 func (c *Client) ZCount(ctx context.Context, key, min, max string) (i int64, err error) {
-	cmd := "zcount"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, min, max}
+	args := []interface{}{"zcount", key, min, max}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -508,15 +515,14 @@ func (c *Client) ZCount(ctx context.Context, key, min, max string) (i int64, err
 }
 
 func (c *Client) ZRem(ctx context.Context, keys ...string) error {
-	cmd := "zrem"
 	args := make([]interface{}, 0, 1+len(keys))
 
-	args = append(args, cmd)
+	args = append(args, "zrem")
 	for _, key := range keys {
 		args = append(args, key)
 	}
 
-	return c.do(ctx, cmd, func(conn *redisConn) error {
+	return c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -532,9 +538,9 @@ func (c *Client) ZRem(ctx context.Context, keys ...string) error {
 }
 
 func (c *Client) ZRemRangeByRank(ctx context.Context, key string, start, stop int64) (i int64, err error) {
-	cmd := "zremrangebyrank"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, start, stop}
+	args := []interface{}{"zremrangebyrank", key, start, stop}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
@@ -551,9 +557,9 @@ func (c *Client) ZRemRangeByRank(ctx context.Context, key string, start, stop in
 }
 
 func (c *Client) ZRemRangeByScore(ctx context.Context, key, min, max string) (i int64, err error) {
-	cmd := "zremrangebyscore"
-	err = c.do(ctx, cmd, func(conn *redisConn) error {
-		args := []interface{}{cmd, key, min, max}
+	args := []interface{}{"zremrangebyscore", key, min, max}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
 		}
