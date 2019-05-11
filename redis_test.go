@@ -76,3 +76,76 @@ func TestBasic(t *testing.T) {
 		t.Fatal("ttl foo failed")
 	}
 }
+
+func TestZSet(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+	})
+
+	if err := c.Del(ctx, "foo"); err != nil {
+		t.Fatal("start faild")
+	}
+
+	c.ZAdd(ctx, &Item{Key: "foo", ZSetValues: map[string]float64{"a": 1, "b": 2}})
+
+	values, _ := c.ZRange(ctx, "foo", 0, -1)
+	if values[0].Member != "a" ||
+		values[0].Score != 1 ||
+		values[1].Member != "b" ||
+		values[1].Score != 2 {
+
+		t.Fatal("zrange faild")
+	}
+
+	values, _ = c.ZRevRange(ctx, "foo", 0, -1)
+	if values[1].Member != "a" ||
+		values[1].Score != 1 ||
+		values[0].Member != "b" ||
+		values[0].Score != 2 {
+
+		t.Fatal("zrange faild")
+	}
+
+	if c, _ := c.ZCard(ctx, "foo"); c != 2 {
+		t.Fatal("zcard faild")
+	}
+
+	c.ZAdd(ctx, &Item{Key: "foo", ZSetValues: map[string]float64{"c": 2}})
+
+	if c, _ := c.ZCount(ctx, "foo", "(1", "+inf"); c != 2 {
+		t.Fatal("zcount faild")
+	}
+
+	c.ZIncrBy(ctx, "foo", "a", 4)
+	if s, _ := c.ZScore(ctx, "foo", "a"); s != 5 {
+		t.Fatal("zincrby faild")
+	}
+
+	if r, _ := c.ZRank(ctx, "foo", "a"); r != 2 {
+		t.Fatal("zrank faild")
+	}
+
+	if r, err := c.ZRevRank(ctx, "foo", "a"); err != nil || r != 0 {
+		t.Fatal("zrevrank faild")
+	}
+
+	c.ZRem(ctx, "foo", "a", "b", "c")
+	if c, err := c.ZCard(ctx, "foo"); err != nil || c != 0 {
+		t.Fatal("zrem faild")
+	}
+
+	c.ZAdd(ctx, &Item{Key: "foo", ZSetValues: map[string]float64{"a": 1, "b": 2, "c": 3, "d": 4}})
+	c.ZRemRangeByRank(ctx, "foo", 2, -1)
+	values, _ = c.ZRange(ctx, "foo", 0, -1)
+	if values[0].Member != "a" || values[1].Member != "b" {
+		t.Fatal("zremrangebyrank faild")
+	}
+
+	c.ZAdd(ctx, &Item{Key: "foo", ZSetValues: map[string]float64{"a": 1, "b": 2, "c": 3, "d": 4}})
+	c.ZRemRangeByScore(ctx, "foo", "0", "2")
+	values, _ = c.ZRange(ctx, "foo", 0, -1)
+	if values[0].Member != "c" || values[1].Member != "d" {
+		t.Fatal("zremrangebyscore faild")
+	}
+}

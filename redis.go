@@ -12,6 +12,7 @@ import (
 const (
 	FlagNX = 1 << 0
 	FlagXX = 1 << 1
+	FlagCH = 1 << 2
 )
 
 type Options struct {
@@ -69,12 +70,19 @@ func (rc *redisConn) Close() error {
 	return rc.c.Close()
 }
 
+type ZSetValue struct {
+	Member string
+	Score  float64
+}
+
 type Item struct {
 	// Key is the Item's key (250 bytes maximum).
 	Key string
 
 	// Value is the Item's value.
 	Value []byte
+
+	ZSetValues map[string]float64
 
 	// Flags 一些 redis 标记位，请参考 Flag 开头的常量定义
 	Flags uint32
@@ -313,6 +321,251 @@ func (c *Client) TTL(ctx context.Context, key string) (ttl int32, err error) {
 		return err
 	})
 
+	return
+}
+
+func (c *Client) ZAdd(ctx context.Context, item *Item) (added int64, err error) {
+	cmd := "zadd"
+	args := make([]interface{}, 0, 4+len(item.ZSetValues))
+	args = append(args, cmd, item.Key)
+
+	if item.Flags&FlagNX > 0 {
+		args = append(args, "NX")
+	} else if item.Flags&FlagXX > 0 {
+		args = append(args, "XX")
+	}
+
+	if item.Flags&FlagCH > 0 {
+		args = append(args, "CH")
+	}
+
+	for member, score := range item.ZSetValues {
+		args = append(args, score, member)
+	}
+
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		added, err = conn.r.ReadIntReply()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return
+}
+
+func (c *Client) ZIncrBy(ctx context.Context, key, member string, by float64) error {
+	cmd := "zincrby"
+	return c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, by, member}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		_, err := conn.r.ReadIntReply()
+		return err
+	})
+}
+
+func (c *Client) ZRange(ctx context.Context, key string, start, stop int64) (values []*ZSetValue, err error) {
+	return c.zrange(ctx, "zrange", key, start, stop)
+}
+
+func (c *Client) ZRevRange(ctx context.Context, key string, start, stop int64) (values []*ZSetValue, err error) {
+	return c.zrange(ctx, "zrevrange", key, start, stop)
+}
+
+func (c *Client) zrange(ctx context.Context, cmd, key string, start, stop int64) (values []*ZSetValue, err error) {
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, start, stop, "WITHSCORES"}
+
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		l, err := conn.r.ReadArrayLenReply()
+		if err != nil {
+			return err
+		}
+
+		values = make([]*ZSetValue, 0, l)
+		for i := 0; i < l/2; i++ {
+			b, err := conn.r.ReadBytesReply()
+			if err != nil {
+				return err
+			}
+			f, err := conn.r.ReadFloat()
+			if err != nil {
+				return err
+			}
+
+			values = append(values, &ZSetValue{Member: string(b), Score: f})
+		}
+
+		return nil
+	})
+
+	return
+}
+
+func (c *Client) ZRank(ctx context.Context, key, member string) (rank int64, err error) {
+	return c.zrank(ctx, "zrank", key, member)
+}
+func (c *Client) ZRevRank(ctx context.Context, key, member string) (rank int64, err error) {
+	return c.zrank(ctx, "zrevrank", key, member)
+}
+
+func (c *Client) zrank(ctx context.Context, cmd, key, member string) (rank int64, err error) {
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, member}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		rank, err = conn.r.ReadIntReply()
+		return err
+	})
+
+	return
+}
+
+func (c *Client) ZScore(ctx context.Context, key, member string) (score float64, err error) {
+	cmd := "zscore"
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, member}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		score, err = conn.r.ReadFloat()
+		return err
+	})
+
+	return
+}
+
+func (c *Client) ZCard(ctx context.Context, key string) (card int64, err error) {
+	cmd := "zcard"
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		card, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) ZCount(ctx context.Context, key, min, max string) (i int64, err error) {
+	cmd := "zcount"
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, min, max}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		i, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) ZRem(ctx context.Context, keys ...string) error {
+	cmd := "zrem"
+	args := make([]interface{}, 0, 1+len(keys))
+
+	args = append(args, cmd)
+	for _, key := range keys {
+		args = append(args, key)
+	}
+
+	return c.do(ctx, cmd, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		_, err := conn.r.ReadIntReply()
+
+		return err
+	})
+}
+
+func (c *Client) ZRemRangeByRank(ctx context.Context, key string, start, stop int64) (i int64, err error) {
+	cmd := "zremrangebyrank"
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, start, stop}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		i, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) ZRemRangeByScore(ctx context.Context, key, min, max string) (i int64, err error) {
+	cmd := "zremrangebyscore"
+	err = c.do(ctx, cmd, func(conn *redisConn) error {
+		args := []interface{}{cmd, key, min, max}
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		i, err = conn.r.ReadIntReply()
+
+		return err
+	})
 	return
 }
 
