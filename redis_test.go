@@ -117,8 +117,8 @@ func TestZSet(t *testing.T) {
 		t.Fatal("zcount faild")
 	}
 
-	c.ZIncrBy(ctx, "foo", "a", 4)
-	if s, _ := c.ZScore(ctx, "foo", "a"); s != 5 {
+	c.ZIncrBy(ctx, "foo", "a", 4.05)
+	if s, _ := c.ZScore(ctx, "foo", "a"); s-5.05 >= 0.000001 {
 		t.Fatal("zincrby faild")
 	}
 

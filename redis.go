@@ -381,7 +381,7 @@ func (c *Client) ZIncrBy(ctx context.Context, key, member string, by float64) er
 			return err
 		}
 
-		_, err := conn.r.ReadIntReply()
+		_, err := conn.r.ReadFloat()
 		return err
 	})
 }
