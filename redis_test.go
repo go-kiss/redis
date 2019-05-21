@@ -174,3 +174,48 @@ func TestOnCmd(t *testing.T) {
 
 	c.Set(ctx, &Item{Key: "foo", Value: []byte("123"), Flags: FlagXX})
 }
+
+func TestMget(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+	})
+
+	keys := make([]string, 0)
+	// 批量插入数据
+	kvs := map[string]string{
+		"key_m_1": "value_m_1",
+		"key_m_2": "value_m_2",
+	}
+
+	for k, v := range kvs {
+		err := c.Set(ctx, &Item{Key: k, Value: []byte(v)})
+		if err != nil {
+			t.Fatal("Set Failed")
+		}
+		keys = append(keys, k)
+	}
+	// 删除数据
+	defer func() {
+		for k := range kvs {
+			if err := c.Del(ctx, k); err != nil {
+				t.Fatal("Del Failed")
+			}
+		}
+	}()
+
+	// 批量获取
+	items, err := c.MGet(ctx, keys)
+	if err != nil {
+		t.Fatal("MGet Failed")
+	}
+
+	// 校验获取的值与插入的一致
+	if string(items[keys[0]].Value) != kvs[keys[0]] {
+		t.Fatal("MGet Failed")
+	}
+
+	if string(items[keys[1]].Value) != kvs[keys[1]] {
+		t.Fatal("MGet Failed")
+	}
+}

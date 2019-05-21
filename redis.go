@@ -184,7 +184,7 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 			return err
 		}
 
-		items := make(map[string]*Item, l)
+		items = make(map[string]*Item, l)
 
 		for i := 0; i < l; i++ {
 			b, err := conn.r.ReadBytesReply()
