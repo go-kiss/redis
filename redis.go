@@ -207,7 +207,7 @@ func (c *Client) Set(ctx context.Context, item *Item) error {
 	args = append(args, "set", item.Key, item.Value)
 
 	if item.TTL > 0 {
-		args = append(args, "expiration", "EX", item.TTL)
+		args = append(args, "EX", item.TTL)
 	}
 
 	if item.Flags&FlagNX > 0 {

@@ -27,6 +27,19 @@ func TestBasic(t *testing.T) {
 		t.Fatal("get foo failed")
 	}
 
+	// set with expire
+	c.Set(ctx, &Item{Key: "set_with_expire", Value: []byte("test"), TTL: 86400})
+	item, _ = c.Get(ctx, "set_with_expire")
+	if !bytes.Equal(item.Value, []byte("test")) {
+		t.Fatal("get foo failed")
+	}
+	// 获取 TTL
+	if ttl, err := c.TTL(ctx, "set_with_expire"); err != nil {
+		t.Fatal("ttl failed")
+	} else if ttl <= 0 {
+		t.Fatal("set with expire failed")
+	}
+
 	// add
 	if err := c.Set(ctx, &Item{Key: "foo", Value: []byte("123"), Flags: FlagNX}); err != Nil {
 		t.Fatal("add foo failed")
