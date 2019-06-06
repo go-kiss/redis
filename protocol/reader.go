@@ -6,7 +6,7 @@ import (
 	"io"
 	"strconv"
 
-	"git.bilibili.co/go/redis/util"
+	"github.com/bilibili/redis/util"
 )
 
 const (

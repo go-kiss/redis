@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"git.bilibili.co/go/net/pool"
-	"git.bilibili.co/go/redis/protocol"
+	"github.com/bilibili/net/pool"
+	"github.com/bilibili/redis/protocol"
 )
 
 const (
