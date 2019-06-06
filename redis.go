@@ -97,6 +97,11 @@ type Item struct {
 
 var noDeadline = time.Time{}
 
+// PoolStats 返回连接池状态
+func (c *Client) PoolStats() *pool.Stats {
+	return c.pool.Stats()
+}
+
 func (c *Client) do(ctx context.Context, args []interface{}, fn func(conn *redisConn) error) error {
 	if c.opts.OnPreCmd != nil {
 		ctx = c.opts.OnPreCmd(ctx, args)
