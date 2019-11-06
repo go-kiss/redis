@@ -75,7 +75,8 @@ func (r *Reader) ReadInterfaceReply() (interface{}, error) {
 	case StatusReply:
 		return string(line[1:]), nil
 	case StringReply:
-		return r.readBytes(line)
+		b, err := r.readBytes(line)
+		return string(b), err
 	default:
 		return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
 	}

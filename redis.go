@@ -29,14 +29,11 @@ func (c Cmd) Int64() (int64, error) {
 }
 
 func (c Cmd) String() (string, error) {
-	switch val := c.val.(type) {
-	case string:
-		return c.val.(string), nil
-	case []byte:
-		return string(c.val.([]byte)), nil
-	default:
-		return "", fmt.Errorf("redis: unexpected type=%T for string", val)
+	v, ok := c.val.(string)
+	if !ok {
+		return "", fmt.Errorf("redis: unexpected type=%T for string", c.val)
 	}
+	return v, nil
 }
 
 func (c Cmd) Interface() interface{} {
