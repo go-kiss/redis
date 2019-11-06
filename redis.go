@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -14,6 +15,33 @@ const (
 	FlagXX = 1 << 1
 	FlagCH = 1 << 2
 )
+
+type Cmd struct {
+	val interface{}
+}
+
+func (c Cmd) Int64() (int64, error) {
+	v, ok := c.val.(int64)
+	if !ok {
+		return 0, fmt.Errorf("redis: unexpected type=%T for int64", c.val)
+	}
+	return v, nil
+}
+
+func (c Cmd) String() (string, error) {
+	switch val := c.val.(type) {
+	case string:
+		return c.val.(string), nil
+	case []byte:
+		return string(c.val.([]byte)), nil
+	default:
+		return "", fmt.Errorf("redis: unexpected type=%T for string", val)
+	}
+}
+
+func (c Cmd) Interface() interface{} {
+	return c.val
+}
 
 type Options struct {
 	Address      string
@@ -204,6 +232,38 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 
 		return nil
 	})
+	return
+}
+
+func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs []interface{}) (result *Cmd, err error) {
+	args := make([]interface{}, 0, len(keys)+len(argvs)+2)
+	args = append(args, "eval", script, len(keys))
+	for _, v := range keys {
+		args = append(args, v)
+	}
+	args = append(args, argvs...)
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		b, err := conn.r.ReadInterfaceReply()
+		if err != nil {
+			return err
+		}
+
+		result = &Cmd{
+			val: b,
+		}
+
+		return nil
+	})
+
 	return
 }
 

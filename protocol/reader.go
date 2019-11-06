@@ -62,6 +62,25 @@ func (r *Reader) readLine() ([]byte, error) {
 	return line, nil
 }
 
+func (r *Reader) ReadInterfaceReply() (interface{}, error) {
+	line, err := r.readLine()
+	if err != nil {
+		return nil, err
+	}
+	switch line[0] {
+	case ErrorReply:
+		return nil, ParseErrorReply(line)
+	case IntReply:
+		return util.ParseInt(line[1:], 10, 64)
+	case StatusReply:
+		return string(line[1:]), nil
+	case StringReply:
+		return r.readBytes(line)
+	default:
+		return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
+	}
+}
+
 func (r *Reader) ReadIntReply() (int64, error) {
 	line, err := r.readLine()
 	if err != nil {
@@ -182,6 +201,8 @@ func (r *Reader) readTmpBytesReply() ([]byte, error) {
 		return nil, ParseErrorReply(line)
 	case StringReply:
 		return r._readTmpBytesReply(line)
+	case StatusReply:
+		return line[1:], nil
 	default:
 		return nil, fmt.Errorf("redis: can't parse string reply: %.100q", line)
 	}

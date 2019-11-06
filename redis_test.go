@@ -232,3 +232,41 @@ func TestMget(t *testing.T) {
 		t.Fatal("MGet Failed")
 	}
 }
+
+func TestEval(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+	})
+
+	if err := c.Del(ctx, "foo"); err != nil {
+		t.Fatal("start faild")
+	}
+
+	// int64
+	val, _ := c.Eval(ctx, "return 64", []string{}, []interface{}{})
+	if v, err := val.Int64(); v != 64 {
+		t.Fatal("eval faild", err)
+	}
+	// string
+	val, _ = c.Eval(ctx, "return ARGV[1]", []string{}, []interface{}{"a\nb\nc"})
+	if v, err := val.String(); v != "a\nb\nc" {
+		t.Fatal("eval faild", err)
+	}
+
+	// status
+	val, _ = c.Eval(ctx, "return redis.call('set',KEYS[1],ARGV[1])", []string{"foo"}, []interface{}{"hello"})
+	c.Del(ctx, "foo")
+	if v, err := val.String(); v != "OK" {
+		t.Fatal("eval faild", err)
+	}
+
+	// with no params
+	c.Eval(ctx, "return redis.call('set',KEYS[1],ARGV[1])", []string{"foo"}, []interface{}{"hello"})
+	defer c.Del(ctx, "foo")
+
+	item, _ := c.Get(ctx, "foo")
+	if !bytes.Equal(item.Value, []byte("hello")) {
+		t.Fatal("eval failed")
+	}
+}
