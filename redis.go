@@ -235,7 +235,7 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 	return
 }
 
-func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs []interface{}) (result *Cmd, err error) {
+func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs ...interface{}) (result *Cmd, err error) {
 	args := make([]interface{}, 0, len(keys)+len(argvs)+2)
 	args = append(args, "eval", script, len(keys))
 	for _, v := range keys {
