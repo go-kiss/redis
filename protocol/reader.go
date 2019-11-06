@@ -77,9 +77,54 @@ func (r *Reader) ReadInterfaceReply() (interface{}, error) {
 	case StringReply:
 		b, err := r.readBytes(line)
 		return string(b), err
+	case ArrayReply:
+		vs, err := r.readArray(line)
+		return vs, err
 	default:
 		return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
 	}
+}
+
+func (r *Reader) readArray(line []byte) ([]interface{}, error) {
+	if isNilReply(line) {
+		return nil, Nil
+	}
+
+	arrayLen, err := parseArrayLen(line)
+	if err != nil {
+		return nil, err
+	}
+
+	vs := make([]interface{}, 0, arrayLen)
+
+	for i := 0; i < arrayLen; i++ {
+		line, err := r.readLine()
+		if err != nil {
+			return nil, err
+		}
+		switch line[0] {
+		case ErrorReply:
+			return nil, ParseErrorReply(line)
+		case IntReply:
+			v, err := util.ParseInt(line[1:], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			vs = append(vs, v)
+		case StatusReply:
+			vs = append(vs, string(line[1:]))
+		case StringReply:
+			b, err := r.readBytes(line)
+			if err != nil {
+				return nil, err
+			}
+			vs = append(vs, string(b))
+		default:
+			return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
+		}
+	}
+
+	return vs, nil
 }
 
 func (r *Reader) ReadIntReply() (int64, error) {

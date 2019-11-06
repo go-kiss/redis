@@ -243,8 +243,14 @@ func TestEval(t *testing.T) {
 		t.Fatal("start faild")
 	}
 
+	// array
+	val, _ := c.Eval(ctx, "return {\"abcc\",1,\"b\"}", []string{})
+	if v, err := val.Array(); v[0].(string) != "abcc" || v[2].(string) != "b" || v[1].(int64) != 1 {
+		t.Fatal("eval faild", err)
+	}
+
 	// int64
-	val, _ := c.Eval(ctx, "return 64", []string{})
+	val, _ = c.Eval(ctx, "return 64", []string{})
 	if v, err := val.Int64(); v != 64 {
 		t.Fatal("eval faild", err)
 	}

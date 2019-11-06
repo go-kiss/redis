@@ -36,6 +36,14 @@ func (c Cmd) String() (string, error) {
 	return v, nil
 }
 
+func (c Cmd) Array() ([]interface{}, error) {
+	v, ok := c.val.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("redis: unexpected type=%T for Array", c.val)
+	}
+	return v, nil
+}
+
 func (c Cmd) Interface() interface{} {
 	return c.val
 }
