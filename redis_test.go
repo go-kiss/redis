@@ -244,8 +244,10 @@ func TestEval(t *testing.T) {
 	}
 
 	// array
-	val, _ := c.Eval(ctx, "return {\"abcc\",1,\"b\"}", []string{})
-	if v, err := val.Array(); v[0].(string) != "abcc" || v[2].(string) != "b" || v[1].(int64) != 1 {
+	val, _ := c.Eval(ctx, "return {\"abcc\",1, {\"b\"} }", []string{})
+	if v, err := val.Array(); v[0].(string) != "abcc" ||
+		v[1].(int64) != 1 ||
+		v[2].([]interface{})[0].(string) != "b" {
 		t.Fatal("eval faild", err)
 	}
 

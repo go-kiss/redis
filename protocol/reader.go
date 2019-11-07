@@ -67,15 +67,7 @@ func (r *Reader) ReadInterfaceReply() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch line[0] {
-	case ErrorReply:
-		return nil, ParseErrorReply(line)
-	case ArrayReply:
-		vs, err := r.readArray(line)
-		return vs, err
-	default:
-		return r.parseInterface(line)
-	}
+	return r.parseInterface(line)
 }
 
 func (r *Reader) parseInterface(line []byte) (interface{}, error) {
@@ -92,8 +84,12 @@ func (r *Reader) parseInterface(line []byte) (interface{}, error) {
 			return nil, err
 		}
 		return string(b), nil
+	case ArrayReply:
+		vs, err := r.readArray(line)
+		return vs, err
+	default:
+		return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
 	}
-	return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
 }
 
 func (r *Reader) readArray(line []byte) ([]interface{}, error) {
