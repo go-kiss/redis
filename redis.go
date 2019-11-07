@@ -16,36 +16,36 @@ const (
 	FlagCH = 1 << 2
 )
 
-type Cmd struct {
+type EvalReturn struct {
 	val interface{}
 }
 
-func (c Cmd) Int64() (int64, error) {
-	v, ok := c.val.(int64)
+func (e EvalReturn) Int64() (int64, error) {
+	v, ok := e.val.(int64)
 	if !ok {
-		return 0, fmt.Errorf("redis: unexpected type=%T for int64", c.val)
+		return 0, fmt.Errorf("redis: unexpected type=%T for int64", e.val)
 	}
 	return v, nil
 }
 
-func (c Cmd) String() (string, error) {
-	v, ok := c.val.(string)
+func (e EvalReturn) String() (string, error) {
+	v, ok := e.val.(string)
 	if !ok {
-		return "", fmt.Errorf("redis: unexpected type=%T for string", c.val)
+		return "", fmt.Errorf("redis: unexpected type=%T for string", e.val)
 	}
 	return v, nil
 }
 
-func (c Cmd) Array() ([]interface{}, error) {
-	v, ok := c.val.([]interface{})
+func (e EvalReturn) Array() ([]interface{}, error) {
+	v, ok := e.val.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("redis: unexpected type=%T for Array", c.val)
+		return nil, fmt.Errorf("redis: unexpected type=%T for Array", e.val)
 	}
 	return v, nil
 }
 
-func (c Cmd) Interface() interface{} {
-	return c.val
+func (e EvalReturn) Interface() interface{} {
+	return e.val
 }
 
 type Options struct {
@@ -240,7 +240,7 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 	return
 }
 
-func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs ...interface{}) (result *Cmd, err error) {
+func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs ...interface{}) (result *EvalReturn, err error) {
 	args := make([]interface{}, 0, len(keys)+len(argvs)+2)
 	args = append(args, "eval", script, len(keys))
 	for _, v := range keys {
@@ -262,7 +262,7 @@ func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs .
 			return err
 		}
 
-		result = &Cmd{
+		result = &EvalReturn{
 			val: b,
 		}
 
