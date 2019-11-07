@@ -70,19 +70,30 @@ func (r *Reader) ReadInterfaceReply() (interface{}, error) {
 	switch line[0] {
 	case ErrorReply:
 		return nil, ParseErrorReply(line)
+	case ArrayReply:
+		vs, err := r.readArray(line)
+		return vs, err
+	default:
+		return r.parseInterface(line)
+	}
+}
+
+func (r *Reader) parseInterface(line []byte) (interface{}, error) {
+	switch line[0] {
+	case ErrorReply:
+		return nil, ParseErrorReply(line)
 	case IntReply:
 		return util.ParseInt(line[1:], 10, 64)
 	case StatusReply:
 		return string(line[1:]), nil
 	case StringReply:
 		b, err := r.readBytes(line)
-		return string(b), err
-	case ArrayReply:
-		vs, err := r.readArray(line)
-		return vs, err
-	default:
-		return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
+		if err != nil {
+			return nil, err
+		}
+		return string(b), nil
 	}
+	return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
 }
 
 func (r *Reader) readArray(line []byte) ([]interface{}, error) {
@@ -102,26 +113,13 @@ func (r *Reader) readArray(line []byte) ([]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch line[0] {
-		case ErrorReply:
-			return nil, ParseErrorReply(line)
-		case IntReply:
-			v, err := util.ParseInt(line[1:], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			vs = append(vs, v)
-		case StatusReply:
-			vs = append(vs, string(line[1:]))
-		case StringReply:
-			b, err := r.readBytes(line)
-			if err != nil {
-				return nil, err
-			}
-			vs = append(vs, string(b))
-		default:
-			return nil, fmt.Errorf("redis: can't parse int reply: %.100q", line)
+
+		v, err := r.parseInterface(line)
+		if err != nil {
+			return nil, err
 		}
+
+		vs = append(vs, v)
 	}
 
 	return vs, nil
