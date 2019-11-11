@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -14,6 +15,38 @@ const (
 	FlagXX = 1 << 1
 	FlagCH = 1 << 2
 )
+
+type EvalReturn struct {
+	val interface{}
+}
+
+func (e EvalReturn) Int64() (int64, error) {
+	v, ok := e.val.(int64)
+	if !ok {
+		return 0, fmt.Errorf("redis: unexpected type=%T for int64", e.val)
+	}
+	return v, nil
+}
+
+func (e EvalReturn) String() (string, error) {
+	v, ok := e.val.(string)
+	if !ok {
+		return "", fmt.Errorf("redis: unexpected type=%T for string", e.val)
+	}
+	return v, nil
+}
+
+func (e EvalReturn) Array() ([]interface{}, error) {
+	v, ok := e.val.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("redis: unexpected type=%T for Array", e.val)
+	}
+	return v, nil
+}
+
+func (e EvalReturn) Interface() interface{} {
+	return e.val
+}
 
 type Options struct {
 	Address      string
@@ -204,6 +237,38 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 
 		return nil
 	})
+	return
+}
+
+func (c *Client) Eval(ctx context.Context, script string, keys []string, argvs ...interface{}) (result *EvalReturn, err error) {
+	args := make([]interface{}, 0, len(keys)+len(argvs)+2)
+	args = append(args, "eval", script, len(keys))
+	for _, v := range keys {
+		args = append(args, v)
+	}
+	args = append(args, argvs...)
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		b, err := conn.r.ReadInterfaceReply()
+		if err != nil {
+			return err
+		}
+
+		result = &EvalReturn{
+			val: b,
+		}
+
+		return nil
+	})
+
 	return
 }
 
