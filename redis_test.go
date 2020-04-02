@@ -120,6 +120,22 @@ func TestZSet(t *testing.T) {
 		t.Fatal("zrange faild")
 	}
 
+	values, _ = c.ZRangeByScore(ctx, "foo", 0, 1)
+	if values[0].Member != "a" ||
+		values[0].Score != 1 {
+
+		t.Fatal("zrangebyscore faild")
+	}
+
+	values, _ = c.ZRevRangeByScore(ctx, "foo", 2, 1)
+	if values[1].Member != "a" ||
+		values[1].Score != 1 ||
+		values[0].Member != "b" ||
+		values[0].Score != 2 {
+
+		t.Fatal("zrevrangebyscore faild")
+	}
+
 	if c, _ := c.ZCard(ctx, "foo"); c != 2 {
 		t.Fatal("zcard faild")
 	}

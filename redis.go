@@ -457,14 +457,22 @@ func (c *Client) ZIncrBy(ctx context.Context, key, member string, by float64) er
 }
 
 func (c *Client) ZRange(ctx context.Context, key string, start, stop int64) (values []*ZSetValue, err error) {
-	return c.zrange(ctx, "zrange", key, start, stop)
+	return c.zrange(ctx, "zrange", key, float64(start), float64(stop))
 }
 
 func (c *Client) ZRevRange(ctx context.Context, key string, start, stop int64) (values []*ZSetValue, err error) {
-	return c.zrange(ctx, "zrevrange", key, start, stop)
+	return c.zrange(ctx, "zrevrange", key, float64(start), float64(stop))
 }
 
-func (c *Client) zrange(ctx context.Context, cmd, key string, start, stop int64) (values []*ZSetValue, err error) {
+func (c *Client) ZRangeByScore(ctx context.Context, key string, min, max float64) (values []*ZSetValue, err error) {
+	return c.zrange(ctx, "zrangebyscore", key, min, max)
+}
+
+func (c *Client) ZRevRangeByScore(ctx context.Context, key string, max, min float64) (values []*ZSetValue, err error) {
+	return c.zrange(ctx, "zrevrangebyscore", key, max, min)
+}
+
+func (c *Client) zrange(ctx context.Context, cmd, key string, start, stop float64) (values []*ZSetValue, err error) {
 	args := []interface{}{cmd, key, start, stop, "WITHSCORES"}
 
 	err = c.do(ctx, args, func(conn *redisConn) error {
