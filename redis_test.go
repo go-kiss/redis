@@ -217,41 +217,33 @@ func TestMget(t *testing.T) {
 		PoolSize: 1,
 	})
 
-	keys := make([]string, 0)
-	// 批量插入数据
-	kvs := map[string]string{
-		"key_m_1": "value_m_1",
-		"key_m_2": "value_m_2",
+	err := c.Set(ctx, &Item{Key: "key_m_1", Value: []byte("value_m_1")})
+	if err != nil {
+		t.Fatal("Set Failed")
 	}
-
-	for k, v := range kvs {
-		err := c.Set(ctx, &Item{Key: k, Value: []byte(v)})
-		if err != nil {
-			t.Fatal("Set Failed")
-		}
-		keys = append(keys, k)
+	err = c.Set(ctx, &Item{Key: "key_m_2", Value: []byte("value_m_2")})
+	if err != nil {
+		t.Fatal("Set Failed")
 	}
 	// 删除数据
-	defer func() {
-		for k := range kvs {
-			if err := c.Del(ctx, k); err != nil {
-				t.Fatal("Del Failed")
-			}
-		}
-	}()
+	defer c.Del(ctx, "key_m_1", "key_m_2")
 
 	// 批量获取
-	items, err := c.MGet(ctx, keys)
+	items, err := c.MGet(ctx, []string{"key_m_1", "key_m_2", "key_m_3"})
 	if err != nil {
 		t.Fatal("MGet Failed")
 	}
 
 	// 校验获取的值与插入的一致
-	if string(items[keys[0]].Value) != kvs[keys[0]] {
+	if string(items["key_m_1"].Value) != "value_m_1" {
 		t.Fatal("MGet Failed")
 	}
 
-	if string(items[keys[1]].Value) != kvs[keys[1]] {
+	if string(items["key_m_2"].Value) != "value_m_2" {
+		t.Fatal("MGet Failed")
+	}
+
+	if _, ok := items["key_m_3"]; ok {
 		t.Fatal("MGet Failed")
 	}
 }

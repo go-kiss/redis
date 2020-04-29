@@ -226,7 +226,10 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 
 		for i := 0; i < l; i++ {
 			b, err := conn.r.ReadBytesReply()
-			if err != nil && err != Nil {
+			if err == Nil {
+				continue
+			}
+			if err != nil {
 				return err
 			}
 
