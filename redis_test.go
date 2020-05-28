@@ -12,7 +12,8 @@ var ctx = context.Background()
 
 func TestBasic(t *testing.T) {
 	c := New(Options{
-		Address:  os.Getenv("REDIS_HOST"),
+		//Address:  os.Getenv("REDIS_HOST"),
+		Address:  "localhost:6379",
 		PoolSize: 1,
 	})
 
