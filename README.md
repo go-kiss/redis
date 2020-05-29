@@ -18,5 +18,20 @@ client := redis.New(Options{
     PoolSize: 1,
 })
 ```
+## Command Group
+- [Cluster](doc/Cluster.md)
+- [Geo](doc/Geo.md)
+- [Hashes](doc/Hashes.md)
+- [HyperLogLog](doc/HyperLogLog.md)
+- [Keys](doc/Keys.md)
+- [Lists](doc/Lists.md)
+- [Pub/Sub](doc/PubSub.md)
+- [Scripting](doc/Scripting.md)
+- [Server](doc/Server.md)
+- [Sets](doc/Sets.md)
+- [Sorted Sets](doc/SortedSets.md)
+- [Streams](doc/Streams.md)
+- [Strings](doc/Strings.md)
+- [Transactions](doc/Transactions.md)
 
 
