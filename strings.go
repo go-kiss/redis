@@ -2,6 +2,40 @@ package redis
 
 import "context"
 
+func (c *Client) Append(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) BitCount(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) BitField(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) BitOP(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) BitOS(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) Decr(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) DecrBy(ctx context.Context, key string, by int64) (int64, error) {
+	return c.IncrBy(ctx, key, -by)
+}
+
 func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
 	args := []interface{}{"get", key}
 	err = c.do(ctx, args, func(conn *redisConn) error {
@@ -26,36 +60,24 @@ func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
 	return
 }
 
-func (c *Client) Set(ctx context.Context, item *Item) error {
-	args := make([]interface{}, 0, 6)
-	args = append(args, "set", item.Key, item.Value)
+func (c *Client) GetBit(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
 
-	if item.TTL > 0 {
-		args = append(args, "EX", item.TTL)
-	}
+func (c *Client) GetRange(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
 
-	if item.Flags&FlagNX > 0 {
-		args = append(args, "NX")
-	} else if item.Flags&FlagXX > 0 {
-		args = append(args, "XX")
-	}
+func (c *Client) GetSet(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
 
-	return c.do(ctx, args, func(conn *redisConn) error {
-		if err := conn.w.WriteArgs(args); err != nil {
-			return err
-		}
-
-		if err := conn.w.Flush(); err != nil {
-			return err
-		}
-
-		_, err := conn.r.ReadStatusReply()
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+func (c *Client) Incr(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
 }
 
 func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err error) {
@@ -79,8 +101,9 @@ func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err
 	return
 }
 
-func (c *Client) DecrBy(ctx context.Context, key string, by int64) (int64, error) {
-	return c.IncrBy(ctx, key, -by)
+func (c *Client) IncrByFloat(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
 }
 
 func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Item, err error) {
@@ -125,3 +148,77 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 	})
 	return
 }
+
+func (c *Client) MSet(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) MSetNX(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) PSetEX(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) Set(ctx context.Context, item *Item) error {
+	args := make([]interface{}, 0, 6)
+	args = append(args, "set", item.Key, item.Value)
+
+	if item.TTL > 0 {
+		args = append(args, "EX", item.TTL)
+	}
+
+	if item.Flags&FlagNX > 0 {
+		args = append(args, "NX")
+	} else if item.Flags&FlagXX > 0 {
+		args = append(args, "XX")
+	}
+
+	return c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		_, err := conn.r.ReadStatusReply()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (c *Client) SetBit(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) SetEX(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) SetNX(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) SetRange(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+func (c *Client) StrLen(ctx context.Context, args ...interface{}) error {
+	// TODO
+	return nil
+}
+
+

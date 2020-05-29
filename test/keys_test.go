@@ -7,6 +7,25 @@ import (
 	"time"
 )
 
+func TestDel(t *testing.T) {
+	err := client.Set(ctx, &redis.Item{
+		Key:   TestKey,
+		Value: util.StringToBytes(TestValue),
+	})
+	err = client.Del(ctx, TestKey)
+	if err != nil {
+		t.Fatalf("string Del error %s", err)
+	}
+	isExists, _ := client.Exists(ctx, TestKey)
+	if isExists {
+		t.Fatalf("string Del error the key still exists")
+	}
+}
+
+func TestDump(t *testing.T) {
+	client.Dump(ctx, TestKey)
+}
+
 func TestExists(t *testing.T) {
 	canNotExistsKey := "NotExistsKey"
 	isExists, err := client.Exists(ctx, canNotExistsKey)
@@ -26,20 +45,6 @@ func TestExists(t *testing.T) {
 	}
 }
 
-func TestDel(t *testing.T) {
-	err := client.Set(ctx, &redis.Item{
-		Key:   TestKey,
-		Value: util.StringToBytes(TestValue),
-	})
-	err = client.Del(ctx, TestKey)
-	if err != nil {
-		t.Fatalf("string Del error %s", err)
-	}
-	isExists, _ := client.Exists(ctx, TestKey)
-	if isExists {
-		t.Fatalf("string Del error the key still exists")
-	}
-}
 
 func TestExpire(t *testing.T) {
 	err := client.Set(ctx, &redis.Item{
