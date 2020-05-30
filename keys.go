@@ -1,3 +1,7 @@
+// @Title  keys.go
+// @Description 包含Keys相关的redis命令
+// @Author  kaixinbaba
+// @Update  kaixinbaba  2020/05/29
 package redis
 
 import (

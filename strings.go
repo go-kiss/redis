@@ -1,3 +1,7 @@
+// @Title  strings.go
+// @Description 包含Keys相关的redis命令
+// @Author  kaixinbaba
+// @Update  kaixinbaba  2020/05/29
 package redis
 
 import "context"
@@ -27,9 +31,8 @@ func (c *Client) BitOS(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
-func (c *Client) Decr(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+func (c *Client) Decr(ctx context.Context, key string) (int64, error) {
+	return c.DecrBy(ctx, key, 1)
 }
 
 func (c *Client) DecrBy(ctx context.Context, key string, by int64) (int64, error) {
@@ -53,7 +56,7 @@ func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
 			return err
 		}
 
-		item = &Item{Value: b}
+		item = &Item{Value: string(b)}
 
 		return nil
 	})
@@ -75,9 +78,8 @@ func (c *Client) GetSet(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
-func (c *Client) Incr(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+func (c *Client) Incr(ctx context.Context, key string) (i int64, err error) {
+	return c.IncrBy(ctx, key, 1)
 }
 
 func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err error) {
@@ -101,9 +103,25 @@ func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err
 	return
 }
 
-func (c *Client) IncrByFloat(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+func (c *Client) IncrByFloat(ctx context.Context, key string, by float64) (i float64, err error) {
+	args := []interface{}{"incrbyfloat", key, by}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+
+		if err = conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		i, err = conn.r.ReadFloat()
+
+		return err
+	})
+
+	return
 }
 
 func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Item, err error) {
@@ -141,7 +159,7 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 
 			key := keys[i]
 
-			items[key] = &Item{Value: b}
+			items[key] = &Item{Value: string(b)}
 		}
 
 		return nil
@@ -216,9 +234,30 @@ func (c *Client) SetRange(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
-func (c *Client) StrLen(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	StrLen
+// @description	返回value值的长度
+// @auth      	kaixinbaba      时间（2020/05/29）
+// @param     	key				string         "需要查询的key"
+// @return    	len(value)    	int64          "返回key对应value的长度"
+func (c *Client) StrLen(ctx context.Context, key string) (valueLen int64, err error) {
+	args := []interface{}{"strlen", key}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		var i int64
+		if i, err = conn.r.ReadIntReply(); err != nil {
+			return err
+		}
+		valueLen = i
+		return nil
+	})
+	return
 }
 
 

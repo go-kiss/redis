@@ -2,28 +2,27 @@ package test
 
 import (
 	"github.com/bilibili/redis"
-	"github.com/bilibili/redis/util"
 	"testing"
 	"time"
 )
 
 func TestDel(t *testing.T) {
 	err := client.Set(ctx, &redis.Item{
-		Key:   TestKey,
-		Value: util.StringToBytes(TestValue),
+		Key:   "kaixinbaba",
+		Value: "bilibili",
 	})
-	err = client.Del(ctx, TestKey)
+	err = client.Del(ctx, "kaixinbaba")
 	if err != nil {
 		t.Fatalf("string Del error %s", err)
 	}
-	isExists, _ := client.Exists(ctx, TestKey)
+	isExists, _ := client.Exists(ctx, "kaixinbaba")
 	if isExists {
 		t.Fatalf("string Del error the key still exists")
 	}
 }
 
 func TestDump(t *testing.T) {
-	client.Dump(ctx, TestKey)
+	client.Dump(ctx, "kaixinbaba")
 }
 
 func TestExists(t *testing.T) {
@@ -36,10 +35,10 @@ func TestExists(t *testing.T) {
 		t.Fatalf("The key [%s] exists!", canNotExistsKey)
 	}
 	err = client.Set(ctx, &redis.Item{
-		Key:   TestKey,
-		Value: util.StringToBytes(TestValue),
+		Key:   "kaixinbaba",
+		Value: "bilibili",
 	})
-	isExists, err = client.Exists(ctx, TestKey)
+	isExists, err = client.Exists(ctx, "kaixinbaba")
 	if err != nil || !isExists {
 		t.Fatalf("string Exists error %s", err)
 	}
@@ -48,16 +47,16 @@ func TestExists(t *testing.T) {
 
 func TestExpire(t *testing.T) {
 	err := client.Set(ctx, &redis.Item{
-		Key:   TestKey,
-		Value: util.StringToBytes(TestValue),
+		Key:   "kaixinbaba",
+		Value: "bilibili",
 	})
 	var expireTime int32 = 2
-	err = client.Expire(ctx, TestKey, expireTime)
+	err = client.Expire(ctx, "kaixinbaba", expireTime)
 	if err != nil {
 		t.Fatalf("string Expire error %s", err)
 	}
 	time.Sleep(time.Duration(expireTime) * time.Second)
-	isExists, _ := client.Exists(ctx, TestKey)
+	isExists, _ := client.Exists(ctx, "kaixinbaba")
 	if isExists {
 		t.Fatalf("string Expire error the key still exists")
 	}

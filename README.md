@@ -6,20 +6,27 @@
 
 ## 更新日志
 - 1.0.0
-
+## Install
+```bash
+$ go get github.com/bilibili/redis
+```
 
 ## BasicUsage
 创建客户端
 ```go
-import "redis"
+package main
+import "github.com/bilibili/redis"
 
-client := redis.New(Options{
-    Address:  "localhost:6379",
-    PoolSize: 1,
-})
+func main() {
+    client := redis.New(Options{
+        Address:  "localhost:6379",
+        PoolSize: 1,
+    })
+}
 ```
 ## Command Group
 - [Cluster](doc/Cluster.md)
+- [Connection](doc/Connection.md)
 - [Geo](doc/Geo.md)
 - [Hashes](doc/Hashes.md)
 - [HyperLogLog](doc/HyperLogLog.md)

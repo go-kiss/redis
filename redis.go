@@ -117,7 +117,7 @@ type Item struct {
 	Key string
 
 	// Value is the Item's value.
-	Value []byte
+	Value string
 
 	ZSetValues map[string]float64
 
