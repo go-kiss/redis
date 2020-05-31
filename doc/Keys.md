@@ -46,7 +46,7 @@ fmt.Println(item)
 ## <span id="DUMP">DUMP</span>
 ```go
 // set redis bilibili
-content, err := client.Del(ctx, "redis")
+content, err := client.Dump(ctx, "redis")
 ```
 ## <span id="EXISTS">EXISTS</span>
 ```go

@@ -16,9 +16,6 @@
 - [ ] [GET](#GET)
     - [x] TestCase
     - [ ] BenchMark
-- [ ] [GETINT](#GETINT)
-    - [x] TestCase
-    - [ ] BenchMark
 - [ ] [GETBIT](#GETBIT)
 - [ ] [GETRANGE](#GETRANGE)
 - [ ] [GETSET](#GETSET)
@@ -68,13 +65,13 @@ fmt.Println(newValue)
 ```
 ## <span id="GET">GET</span>
 ```go
+// get string
 // set redis bilibili
 item, err := client.Get(ctx, "redis")
 // bilibili
 fmt.Println(item.Value)
-```
-## <span id="GETINT">GETINT</span>
-```go
+//---------------------------
+// get int
 // set redis bilibili
 item, err := client.GetInt(ctx, "redis") // got an error
 // set redis 2018
