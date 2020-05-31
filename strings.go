@@ -4,7 +4,10 @@
 // @Update  kaixinbaba  2020/05/29
 package redis
 
-import "context"
+import (
+	"context"
+	"github.com/bilibili/redis/util"
+)
 
 func (c *Client) Append(ctx context.Context, args ...interface{}) error {
 	// TODO
@@ -31,15 +34,55 @@ func (c *Client) BitOS(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
+// @title    	Decr
+// @description	对value值减1，原子操作
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	newValue = oldValue - 1    	int64           "返回减1后的value值"
 func (c *Client) Decr(ctx context.Context, key string) (int64, error) {
 	return c.DecrBy(ctx, key, 1)
 }
 
+// @title    	DecrBy
+// @description	对value值减去by的值，原子操作
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	newValue = oldValue - by   	int64           "返回减by后的value值"
 func (c *Client) DecrBy(ctx context.Context, key string, by int64) (int64, error) {
 	return c.IncrBy(ctx, key, -by)
 }
 
+func stringConv(b []byte) (interface{}, error) {
+	return util.BytesToString(b), nil
+}
+
+// @title    	Get
+// @description 获取目标key的string value值
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	item 					   	*Item           "返回key对应的Item指针, value默认为string"
 func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
+	return c.get(ctx, key, stringConv)
+}
+
+func intConv(b []byte) (interface{}, error) {
+	i, err := util.Atoi(b)
+	if err != nil {
+		return nil, err
+	}
+	return i, nil
+}
+
+// @title    	GetInt
+// @description 获取目标key的int value值
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	item 					   	*Item           "返回key对应的Item指针, value默认为int"
+func (c *Client) GetInt(ctx context.Context, key string) (item *Item, err error) {
+	return c.get(ctx, key, intConv)
+}
+
+func (c *Client) get(ctx context.Context, key string, typeConv func([]byte) (interface{}, error)) (item *Item, err error) {
 	args := []interface{}{"get", key}
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
@@ -55,8 +98,12 @@ func (c *Client) Get(ctx context.Context, key string) (item *Item, err error) {
 			item = nil
 			return err
 		}
-
-		item = &Item{Value: string(b)}
+		value, err := typeConv(b)
+		if err != nil {
+			item = nil
+			return err
+		}
+		item = &Item{Value: value}
 
 		return nil
 	})
@@ -78,10 +125,20 @@ func (c *Client) GetSet(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
+// @title    	Incr
+// @description	对value值加上1的值，原子操作
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	newValue = oldValue + 1   	int64           "返回加1后的value值"
 func (c *Client) Incr(ctx context.Context, key string) (i int64, err error) {
 	return c.IncrBy(ctx, key, 1)
 }
 
+// @title    	IncrBy
+// @description	对value值加上by的值，原子操作
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	newValue = oldValue + by   	int64           "返回加by后的value值"
 func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err error) {
 	args := []interface{}{"incrby", key, by}
 
@@ -103,6 +160,11 @@ func (c *Client) IncrBy(ctx context.Context, key string, by int64) (i int64, err
 	return
 }
 
+// @title    	IncrByFloat
+// @description	对value值加上by的值，原子操作
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	key							string			"需要操作的key"
+// @return    	newValue = oldValue + by   	float64         "返回加by后的value值"
 func (c *Client) IncrByFloat(ctx context.Context, key string, by float64) (i float64, err error) {
 	args := []interface{}{"incrbyfloat", key, by}
 
@@ -182,6 +244,15 @@ func (c *Client) PSetEX(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
+// @title    	Set
+// @description	设置K-V数据到redis中
+// @auth      	kaixinbaba      时间（2020/05/30）
+// @param     	item   						*Item			"需要set的Item对象的指针"
+//					Key						string
+//					Value					anything
+//					TTL						>0
+//					Flags					if 1 setnx
+// @return 									error
 func (c *Client) Set(ctx context.Context, item *Item) error {
 	args := make([]interface{}, 0, 6)
 	args = append(args, "set", item.Key, item.Value)
@@ -195,7 +266,6 @@ func (c *Client) Set(ctx context.Context, item *Item) error {
 	} else if item.Flags&FlagXX > 0 {
 		args = append(args, "XX")
 	}
-
 	return c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
@@ -215,16 +285,6 @@ func (c *Client) Set(ctx context.Context, item *Item) error {
 }
 
 func (c *Client) SetBit(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
-}
-
-func (c *Client) SetEX(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
-}
-
-func (c *Client) SetNX(ctx context.Context, args ...interface{}) error {
 	// TODO
 	return nil
 }
@@ -259,5 +319,3 @@ func (c *Client) StrLen(ctx context.Context, key string) (valueLen int64, err er
 	})
 	return
 }
-
-
