@@ -6,17 +6,65 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"github.com/bilibili/redis/util"
 )
 
-func (c *Client) Append(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	Append
+// @description	将value值拼接在目标key原先对应的value后, 如果key不存在就会创建
+// @auth      	kaixinbaba      时间（2020/06/01）
+// @param     	key							string			"需要操作的key"
+// @param     	value						interface{}		"需要拼接的value，都会转换为string拼接在原来的value之后"
+// @return    	len(newValue)    			int64           "拼接完成后的新的value的长度"
+func (c *Client) Append(ctx context.Context, key string, value interface{}) (strLen int64, err error) {
+	args := []interface{}{"append", key, value.(string)}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		if strLen, err = conn.r.ReadIntReply(); err != nil {
+			return err
+		}
+		return nil
+	})
+	return
 }
 
-func (c *Client) BitCount(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	BitCount
+// @description	对给定的整个字符串进行字节长度计数，通过指定额外的 start 或 end 参数，可以让计数只在特定的位上进行。
+// @auth      	kaixinbaba      时间（2020/06/01）
+// @param     	key							string			"需要统计的key"
+// @param     	index						int32...		"可以不传或者传两个数字， 不传代表统计整个字符串，传两个对应start和end"
+// @return    	len(byte)	 	   			int64           "统计出的字节长度"
+func (c *Client) BitCount(ctx context.Context, key string, index ...int32) (byteLen int64, err error) {
+	// 只取前两个索引
+	args := []interface{}{"bitcount", key}
+	if index != nil && len(index) != 2 {
+		return -1, errors.New("bitcount both start and end are required or just not pass")
+	}
+	for _, i := range index {
+		args = append(args, i)
+	}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		if byteLen, err = conn.r.ReadIntReply(); err != nil {
+			return err
+		}
+		return nil
+	})
+	return
 }
 
 func (c *Client) BitField(ctx context.Context, args ...interface{}) error {
@@ -186,7 +234,12 @@ func (c *Client) IncrByFloat(ctx context.Context, key string, by float64) (i flo
 	return
 }
 
-func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Item, err error) {
+// @title    	MGet
+// @description	批量Get命令，不会返回不存在的key
+// @auth      	kaixinbaba      时间（2020/06/01）
+// @param     	keys						[]string			"需要操作的key"
+// @return    	map 			   			map[string]string   "返回存在的key和value的map"
+func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]string, err error) {
 	args := make([]interface{}, 0, len(keys)+1)
 
 	args = append(args, "mget")
@@ -208,7 +261,7 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 			return err
 		}
 
-		items = make(map[string]*Item, l)
+		items = make(map[string]string, l)
 
 		for i := 0; i < l; i++ {
 			b, err := conn.r.ReadBytesReply()
@@ -221,7 +274,7 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 
 			key := keys[i]
 
-			items[key] = &Item{Value: string(b)}
+			items[key] = string(b)
 		}
 
 		return nil
@@ -229,14 +282,53 @@ func (c *Client) MGet(ctx context.Context, keys []string) (items map[string]*Ite
 	return
 }
 
-func (c *Client) MSet(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	MSet
+// @description	批量Set命令
+// @auth      	kaixinbaba      时间（2020/06/01）
+// @param     	keys						[]items				"需要设置的item对象"
+func (c *Client) MSet(ctx context.Context, items []*Item) error {
+	return c.mset(ctx, items, 0)
 }
 
-func (c *Client) MSetNX(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	MSetNX
+// @description	批量SetNX命令
+// @auth      	kaixinbaba      时间（2020/06/01）
+// @param     	keys						[]items				"需要设置的item对象"
+func (c *Client) MSetNX(ctx context.Context, items []*Item) error {
+	return c.mset(ctx, items, FlagNX)
+}
+
+func (c *Client) mset(ctx context.Context, items []*Item, flag int32) error {
+	args := make([]interface{}, 0, len(items)*2+1)
+
+	if flag&FlagNX > 0 {
+		args = append(args, "msetnx")
+	} else {
+		args = append(args, "mset")
+	}
+	for _, item := range items {
+		args = append(args, item.Key, item.Value)
+	}
+	return c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+		var err error
+		if flag&FlagNX > 0 {
+			_, err = conn.r.ReadIntReply()
+		} else {
+			_, err = conn.r.ReadStatusReply()
+		}
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (c *Client) PSetEX(ctx context.Context, args ...interface{}) error {

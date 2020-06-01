@@ -3,6 +3,7 @@ package redis
 import (
 	"bytes"
 	"context"
+	"github.com/bilibili/redis/util"
 	"os"
 	"testing"
 	"time"
@@ -24,14 +25,14 @@ func TestBasic(t *testing.T) {
 	c.Set(ctx, &Item{Key: "foo", Value: []byte("hello")})
 
 	item, _ := c.Get(ctx, "foo")
-	if !bytes.Equal(item.Value, []byte("hello")) {
+	if !bytes.Equal(util.StringToBytes(item.Value.(string)), []byte("hello")) {
 		t.Fatal("get foo failed")
 	}
 
 	// set with expire
 	c.Set(ctx, &Item{Key: "set_with_expire", Value: []byte("test"), TTL: 86400})
 	item, _ = c.Get(ctx, "set_with_expire")
-	if !bytes.Equal(item.Value, []byte("test")) {
+	if !bytes.Equal(util.StringToBytes(item.Value.(string)), []byte("test")) {
 		t.Fatal("get foo failed")
 	}
 	// 获取 TTL
@@ -52,7 +53,7 @@ func TestBasic(t *testing.T) {
 	}
 
 	item, _ = c.Get(ctx, "foo")
-	if !bytes.Equal(item.Value, []byte("123")) {
+	if !bytes.Equal(util.StringToBytes(item.Value.(string)), []byte("123")) {
 		t.Fatal("replace foo failed")
 	}
 
@@ -67,13 +68,13 @@ func TestBasic(t *testing.T) {
 
 	c.IncrBy(ctx, "foo", 3)
 	item, _ = c.Get(ctx, "foo")
-	if !bytes.Equal(item.Value, []byte("3")) {
+	if !bytes.Equal(util.StringToBytes(item.Value.(string)), []byte("3")) {
 		t.Fatal("increment foo failed")
 	}
 
 	c.DecrBy(ctx, "foo", 4)
 	item, _ = c.Get(ctx, "foo")
-	if !bytes.Equal(item.Value, []byte("-1")) {
+	if !bytes.Equal(util.StringToBytes(item.Value.(string)), []byte("-1")) {
 		t.Fatal("decrement foo failed")
 	}
 
@@ -236,11 +237,11 @@ func TestMget(t *testing.T) {
 	}
 
 	// 校验获取的值与插入的一致
-	if string(items["key_m_1"].Value) != "value_m_1" {
+	if items["key_m_1"].Value.(string) != "value_m_1" {
 		t.Fatal("MGet Failed")
 	}
 
-	if string(items["key_m_2"].Value) != "value_m_2" {
+	if items["key_m_2"].Value.(string) != "value_m_2" {
 		t.Fatal("MGet Failed")
 	}
 
@@ -290,7 +291,7 @@ func TestEval(t *testing.T) {
 	defer c.Del(ctx, "foo")
 
 	item, _ := c.Get(ctx, "foo")
-	if !bytes.Equal(item.Value, []byte("hello")) {
+	if !bytes.Equal(util.StringToBytes(item.Value.(string)), []byte("hello")) {
 		t.Fatal("eval failed")
 	}
 }

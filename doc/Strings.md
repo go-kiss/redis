@@ -3,7 +3,11 @@
 - [Redis官网-Strings介绍](https://redis.io/commands#string)
 ## 命令列表 
 - [ ] [APPEND](#APPEND)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [BITCOUNT](#BITCOUNT)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [BITFIELD](#BITFIELD)
 - [ ] [BITOP](#BITOP)
 - [ ] [BITOS](#BITOS)
@@ -26,9 +30,17 @@
     - [x] TestCase
     - [ ] BenchMark
 - [ ] [INCRBYFLOAT](#INCRBYFLOAT)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [MGET](#MGET)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [MSET](#MSET)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [MSETNX](#MSETNX)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [PSETEX](#PSETEX)
 - [ ] [SET](#SET)
     - [x] TestCase
@@ -45,7 +57,20 @@
     - [x] TestCase
     - [ ] BenchMark
 ## <span id="APPEND">APPEND</span>
+```go
+strLen, err := client.Append(ctx, "redis", "bilibili")
+// len(bilibili) = 8
+fmt.Println(strLen)
+strLen, _ = client.Append(ctx, "redis", "1234")
+// len(bilibili1234) = 12
+fmt.Println(strLen)
+```
 ## <span id="BITCOUNT">BITCOUNT</span>
+```go
+strLen, err := client.BitCount(ctx, "redis")
+// or
+strLen, err := client.BitCount(ctx, "redis", 0, 2)
+```
 ## <span id="BITFIELD">BITFIELD</span>
 ## <span id="BITOP">BITOP</span>
 ## <span id="BITOS">BITOS</span>
@@ -98,8 +123,19 @@ fmt.Println(newValue)
 ```
 ## <span id="INCRBYFLOAT">INCRBYFLOAT</span>
 ## <span id="MGET">MGET</span>
+```go
+items, err := client.MGet(ctx, "key1", "key2")
+// map key1=value1 key2=value2
+fmt.Println(items)
+```
 ## <span id="MSET">MSET</span>
+```go
+err := client.MSet(ctx, "key1", "value1", "key2", "value2")
+```
 ## <span id="MSETNX">MSETNX</span>
+```go
+err := client.MSetNX(ctx, "key1", "value1", "key2", "value2")
+```
 ## <span id="PSETEX">PSETEX</span>
 ## <span id="SET">SET</span>
 ```go

@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"github.com/bilibili/redis"
 	"testing"
 	"time"
@@ -13,6 +14,47 @@ var client = redis.New(redis.Options{
 })
 
 var ctx = context.TODO()
+
+func TestAppend(t *testing.T) {
+	client.Del(ctx, "kaixinbaba")
+	valueLen, err := client.Append(ctx, "kaixinbaba", "redis")
+	if err != nil {
+		t.Fatalf("strings Append error %s", err)
+	}
+	if valueLen != 5 {
+		t.Fatalf("'redis' length must be 5")
+	}
+	valueLen, _ = client.Append(ctx, "kaixinbaba", "bilibili")
+	if valueLen != 13 {
+		t.Fatalf("'redisbilibili' length must be 13")
+	}
+}
+
+func TestBitCount(t *testing.T) {
+	client.Set(ctx, &redis.Item{
+		Key:   "kaixinbaba",
+		Value: "bilibili",
+	})
+	byteLen, err := client.BitCount(ctx, "kaixinbaba")
+	if err != nil {
+		t.Fatalf("strings Append error %s", err)
+	}
+	if byteLen != 30 {
+		t.Fatalf("'bilibili' byte length must be 30")
+	}
+	byteLen, _ = client.BitCount(ctx, "kaixinbaba", 0, 1)
+	if byteLen != 7 {
+		t.Fatalf("'bilibili' byte length must be 7")
+	}
+	_, err = client.BitCount(ctx, "kaixinbaba", 5)
+	if err == nil {
+		t.Fatalf("Can't just provide start or end")
+	}
+	_, err = client.BitCount(ctx, "kaixinbaba", 0, 1, 2, 3)
+	if err == nil {
+		t.Fatalf("bitcount can only provide 2 arguments")
+	}
+}
 
 func TestDecr(t *testing.T) {
 	client.Set(ctx, &redis.Item{
@@ -150,6 +192,62 @@ func TestIncrByFloat(t *testing.T) {
 	// 2017 + 10.02 = 2027.02
 	if newValue != 2027.02 {
 		t.Fatalf("newValue must be 2027.02")
+	}
+}
+
+func TestMGet(t *testing.T) {
+	items, err := client.MGet(ctx, []string{"mset1", "mset2"})
+	if err != nil {
+		t.Fatalf("strings MGet error %s", err)
+	}
+	fmt.Println(items)
+}
+
+func TestMSet(t *testing.T) {
+	err := client.MSet(ctx, []*redis.Item{
+		{
+			Key:   "mset1",
+			Value: "123",
+		},
+		{
+			Key:   "mset2",
+			Value: "355",
+		},
+	})
+	if err != nil {
+		t.Fatalf("strings MSet error %s", err)
+	}
+}
+
+func TestMSetNX(t *testing.T) {
+	err := client.MSetNX(ctx, []*redis.Item{
+		{
+			Key:   "mset1",
+			Value: "bilibili",
+		},
+		{
+			Key:   "mset2",
+			Value: "redis",
+		},
+	})
+	if err != nil {
+		t.Fatalf("strings MSetNX error %s", err)
+	}
+	client.MSetNX(ctx, []*redis.Item{
+		{
+			Key:   "mset1",
+			Value: "123",
+		},
+		{
+			Key:   "mset2",
+			Value: "345",
+		},
+	})
+	if item, _ := client.Get(ctx, "mset1"); item.Value != "bilibili" {
+		t.Fatalf("strings MSetNX can't change exists key")
+	}
+	if item, _ := client.Get(ctx, "mset2"); item.Value != "redis" {
+		t.Fatalf("strings MSetNX can't change exists key")
 	}
 }
 
