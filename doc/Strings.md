@@ -22,7 +22,11 @@
     - [ ] BenchMark
 - [ ] [GETBIT](#GETBIT)
 - [ ] [GETRANGE](#GETRANGE)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [GETSET](#GETSET)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [INCR](#INCR)
     - [x] TestCase
     - [ ] BenchMark
@@ -53,6 +57,8 @@
     - [x] TestCase
     - [ ] BenchMark
 - [ ] [SETRANGE](#SETRANGE)
+    - [x] TestCase
+    - [ ] BenchMark
 - [ ] [STRLEN](#STRLEN)
     - [x] TestCase
     - [ ] BenchMark
@@ -106,7 +112,27 @@ fmt.Println(item.Value)
 ```
 ## <span id="GETBIT">GETBIT</span>
 ## <span id="GETRANGE">GETRANGE</span>
+```go
+// set redis ILoveBiliBili
+newValue, err := client.GetRange(ctx, "redis", 2, 7)
+// oveBil
+fmt.Println(newValue)
+// or
+newValue, err := client.GetRange(ctx, "redis", -8, -3)
+// BiliBi
+fmt.Println(newValue)
+```
 ## <span id="GETSET">GETSET</span>
+```go
+// when key redis not exists
+oldValue, err := client.GetSet(ctx, "redis", "bilibili")
+// nil
+fmt.Println(oldValue)
+// when key redis exists
+oldValue, err := client.GetSet(ctx, "redis", "new bilibili")
+// bilibili
+fmt.Println(oldValue)
+```
 ## <span id="INCR">INCR</span>
 ```go
 // set redis 2017
@@ -122,6 +148,12 @@ newValue, err := client.IncrBy(ctx, "redis", 1002)
 fmt.Println(newValue)
 ```
 ## <span id="INCRBYFLOAT">INCRBYFLOAT</span>
+```go
+// set redis 2017
+newValue, err := client.IncrByFloat(ctx, "redis", 10.02)
+// 2027.02
+fmt.Println(newValue)
+```
 ## <span id="MGET">MGET</span>
 ```go
 items, err := client.MGet(ctx, "key1", "key2")
@@ -165,6 +197,15 @@ err := client.Set(ctx, &redis.Item{
         })
 ```
 ## <span id="SETRANGE">SETRANGE</span>
+```go
+// when key redis not exists
+strLen, err := client.SetRange(ctx, "redis", 0, "bilibili")
+// 8
+fmt.Println(strLen)
+strLen, err := client.SetRange(ctx, "redis", 3, "kaixinbaba")
+// 13 = len(bilkaixinbaba)
+fmt.Println(strLen)
+```
 ## <span id="STRLEN">STRLEN</span>
 ```go
 // set redis bilibili

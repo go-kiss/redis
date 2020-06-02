@@ -119,8 +119,34 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestGetInt(t *testing.T) {
+func TestGetRange(t *testing.T) {
+	client.Set(ctx, &redis.Item{
+		Key:   "kaixinbaba",
+		Value: "bilibili",
+	})
+	subValue, err := client.GetRange(ctx, "kaixinbaba", 1, 5)
+	if err != nil {
+		t.Fatalf("strings GetRange error %s", err)
+	}
+	if subValue != "ilibi" {
+		t.Fatalf("subValue should return 'ilibi'")
+	}
+}
 
+func TestGetSet(t *testing.T) {
+	client.Del(ctx, "kaixinbaba")
+	// getset not exists key
+	oldValue, err := client.GetSet(ctx, "kaixinbaba", "bilibili")
+	if err != nil {
+		t.Fatalf("strings GetSet error %s", err)
+	}
+	if oldValue != nil {
+		t.Fatalf("GetSet not exists key should return nil")
+	}
+	oldValue, _ = client.GetSet(ctx, "kaixinbaba", "redis")
+	if oldValue != "bilibili" {
+		t.Fatalf("GetSet should return pre-value 'bilibili'")
+	}
 }
 
 func TestIncr(t *testing.T) {
@@ -320,6 +346,22 @@ func TestSetNX(t *testing.T) {
 	}
 }
 
+func TestSetRange(t *testing.T) {
+	client.Del(ctx, "kaixinbaba")
+	strLen, err := client.SetRange(ctx, "kaixinbaba", 0, "bilibili")
+	if err != nil {
+		t.Fatalf("strings SetRange error %s", err)
+	}
+	if strLen != 8 {
+		t.Fatalf("strLen should equal 8")
+	}
+	strLen, _ = client.SetRange(ctx, "kaixinbaba", 4, "redis")
+	// newValue = biliredis lenght is 9
+	if strLen != 9 {
+		t.Fatalf("strLen should equal 9")
+	}
+}
+
 func TestStrLen(t *testing.T) {
 	err := client.Set(ctx, &redis.Item{
 		Key:   "kaixinbaba",
@@ -329,7 +371,7 @@ func TestStrLen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("strings StrLen error %s", err)
 	}
-	if valueLen != int64(len("bilibili")) {
+	if valueLen != len("bilibili") {
 		t.Fatalf("strings StrLen result [%d] not equal to len(TestValue) [%d]", valueLen, len("bilibili"))
 	}
 }

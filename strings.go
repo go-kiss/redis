@@ -101,6 +101,9 @@ func (c *Client) DecrBy(ctx context.Context, key string, by int64) (int64, error
 }
 
 func stringConv(b []byte) (interface{}, error) {
+	if b == nil {
+		return nil, nil
+	}
 	return util.BytesToString(b), nil
 }
 
@@ -163,14 +166,69 @@ func (c *Client) GetBit(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
-func (c *Client) GetRange(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	GetRange
+// @description 获取对应key的value的子字符串, 开始和结束的索引都是闭区间
+// @auth      	kaixinbaba      时间（2020/06/02）
+// @param     	key							string			"需要操作的key"
+// @param     	start						int32			"子字符串的开始索引(包含), 并且可以为负数"
+// @param     	end							int32			"子字符串的结束索引(包含), 并且可以为负数"
+// @return    	subValue				   	string     		"截取后的子字符串"
+func (c *Client) GetRange(ctx context.Context, key string, start int32, end int32) (subValue interface{}, err error) {
+	args := []interface{}{"getrange", key, start, end}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		var b []byte
+		if b, err = conn.r.ReadBytesReply(); err != nil {
+			subValue = nil
+			return err
+		}
+		subValue, err = stringConv(b)
+		if err != nil {
+			subValue = nil
+			return err
+		}
+		return nil
+	})
+	return
 }
 
-func (c *Client) GetSet(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
+// @title    	GetSet
+// @description 设置对应key的value值，并且返回旧的value值，如果key原先不存在，则返回nil
+// @auth      	kaixinbaba      时间（2020/06/02）
+// @param     	key							string			"需要操作的key"
+// @param     	newValue					string			"需要设置的value"
+// @return    	oldValue				   	interface{}     "对应key原先的值，如果key不存在则返回nil"
+func (c *Client) GetSet(ctx context.Context, key string, newValue interface{}) (oldValue interface{}, err error) {
+	args := []interface{}{"getset", key, newValue}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		var b []byte
+		if b, err = conn.r.ReadBytesReply(); err != nil && err != Nil {
+			oldValue = nil
+			return err
+		}
+		oldValue, err = stringConv(b)
+		if err != nil {
+			oldValue = nil
+			return err
+		}
+		return nil
+	})
+	return
 }
 
 // @title    	Incr
@@ -381,18 +439,15 @@ func (c *Client) SetBit(ctx context.Context, args ...interface{}) error {
 	return nil
 }
 
-func (c *Client) SetRange(ctx context.Context, args ...interface{}) error {
-	// TODO
-	return nil
-}
-
-// @title    	StrLen
-// @description	返回value值的长度
-// @auth      	kaixinbaba      时间（2020/05/29）
-// @param     	key				string         "需要查询的key"
-// @return    	len(value)    	int64          "返回key对应value的长度"
-func (c *Client) StrLen(ctx context.Context, key string) (valueLen int64, err error) {
-	args := []interface{}{"strlen", key}
+// @title    	SetRange
+// @description	返回设置后的value值的长度
+// @auth      	kaixinbaba      时间（2020/06/02）
+// @param     	key				string         	"需要查询的key"
+// @param     	offset			int         	"偏移量"
+// @param     	value			interface{} 	"从offset开始替换原value至value"
+// @return    	len(value)    	int64          	"返回设置后的value值的长度"
+func (c *Client) SetRange(ctx context.Context, key string, offset int, value interface{}) (strLen int, err error) {
+	args := []interface{}{"setrange", key, offset, value}
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
@@ -404,9 +459,34 @@ func (c *Client) StrLen(ctx context.Context, key string) (valueLen int64, err er
 
 		var i int64
 		if i, err = conn.r.ReadIntReply(); err != nil {
+			strLen = int(i)
 			return err
 		}
-		valueLen = i
+		return nil
+	})
+	return
+}
+
+// @title    	StrLen
+// @description	返回value值的长度
+// @auth      	kaixinbaba      时间（2020/05/29）
+// @param     	key				string         "需要查询的key"
+// @return    	len(value)    	int64          "返回key对应value的长度"
+func (c *Client) StrLen(ctx context.Context, key string) (valueLen int, err error) {
+	args := []interface{}{"strlen", key}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+		var i int64
+		if i, err = conn.r.ReadIntReply(); err != nil {
+			valueLen = int(i)
+			return err
+		}
 		return nil
 	})
 	return
