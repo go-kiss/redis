@@ -293,3 +293,33 @@ func TestEval(t *testing.T) {
 		t.Fatal("eval failed")
 	}
 }
+
+func TestSet(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+	})
+
+	if err := c.Del(ctx, "foo"); err != nil {
+		t.Fatal("start faild")
+	}
+
+	// sadd
+	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("aaa")}); err != nil {
+		t.Fatalf("add foo aaa failed, err: %v", err)
+	}
+	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("bbb")}); err != nil {
+		t.Fatalf("add foo bbb failed, err: %v", err)
+	}
+	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("ccc")}); err != nil {
+		t.Fatalf("add foo ccc failed, err: %v", err)
+	}
+
+	item, _ := c.SPop(ctx, "foo")
+	for _, v := range [][]byte{[]byte("aaa"), []byte("bbb"), []byte("ccc")} {
+		if bytes.Equal(v, item.Value) {
+			return
+		}
+	}
+	t.Fatal("spop foo failed")
+}

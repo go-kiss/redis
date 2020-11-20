@@ -662,3 +662,49 @@ func (c *Client) ZRemRangeByScore(ctx context.Context, key, min, max string) (i 
 func (c *Client) Stats() *pool.Stats {
 	return c.pool.Stats()
 }
+
+func (c *Client) SAdd(ctx context.Context, item *Item) (err error) {
+	args := make([]interface{}, 0, 6)
+	args = append(args, "sadd", item.Key, item.Value)
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		_, err = conn.r.ReadIntReply()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	return
+}
+
+func (c *Client) SPop(ctx context.Context, key string) (item *Item, err error) {
+	args := []interface{}{"spop", key}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		var b []byte
+		if b, err = conn.r.ReadBytesReply(); err != nil {
+			item = nil
+			return err
+		}
+
+		item = &Item{Value: b}
+
+		return nil
+	})
+	return
+}
