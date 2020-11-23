@@ -342,7 +342,6 @@ func TestSet(t *testing.T) {
 	}
 
 	// smembers
-	// func (c *Client) SMembers(ctx context.Context, key string) (items []*Item, err error) {
 	items, err := c.SMembers(ctx, "foo")
 	if err != nil {
 		t.Fatalf("get foo's members failed, err: %v", err)
