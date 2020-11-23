@@ -293,3 +293,64 @@ func TestEval(t *testing.T) {
 		t.Fatal("eval failed")
 	}
 }
+
+func TestSet(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+	})
+	var err error
+
+	if err := c.Del(ctx, "foo"); err != nil {
+		t.Fatal("start faild")
+	}
+
+	// sadd
+	if err := c.SAdd(ctx, "foo", []byte("aaa")); err != nil {
+		t.Fatalf("add foo aaa failed, err: %v", err)
+	}
+	if err := c.SAdd(ctx, "foo", []byte("bbb"), []byte("ccc")); err != nil {
+		t.Fatalf("add foo ddd,eee,fff failed, err: %v", err)
+	}
+
+	// scard
+	if card, err := c.SCard(ctx, "foo"); err != nil || card != 3 {
+		t.Fatalf("Key: foo, Scard: %d; Failed, err: %v", card, err)
+	}
+
+	// smembers
+	items, err := c.SMembers(ctx, "foo")
+	if err != nil {
+		t.Fatalf("get foo's members failed, err: %v", err)
+	}
+	t.Logf("items: %#v", items)
+
+	// sismember
+	if result, err := c.SIsMember(ctx, "foo", []byte("bbb")); err != nil || result != true {
+		t.Fatalf("Key: foo, SIsMember: %t; Failed, err: %v", result, err)
+	}
+
+	// spop
+	item, _ := c.SPop(ctx, "foo", 1)
+	if len(item) < 1 {
+		t.Fatal("spop foo empty")
+	}
+	set := map[string]bool{"aaa": true, "bbb": true, "ccc": true}
+	exists := set[string(item[0])]
+	if !exists {
+		t.Fatal("spop foo failed")
+	}
+
+	// srem
+	if err := c.SAdd(ctx, "foo", []byte("ddd"), []byte("eee"), []byte("fff")); err != nil {
+		t.Fatalf("add foo ddd failed, err: %v", err)
+	}
+	if result, err := c.SRem(ctx, "foo", []byte("ddd"), []byte("fff")); err != nil || result == 0 {
+		t.Fatalf("Key: foo, SRem: %d; Failed, err: %v", result, err)
+	}
+
+	// srem 删除不存在的值
+	if result, err := c.SRem(ctx, "foo", []byte("zzz"), []byte("xxx")); err != nil || result == 0 {
+		t.Logf("Key: foo, SRem: %d; Failed, err: %v", result, err)
+	}
+}

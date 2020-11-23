@@ -662,3 +662,151 @@ func (c *Client) ZRemRangeByScore(ctx context.Context, key, min, max string) (i 
 func (c *Client) Stats() *pool.Stats {
 	return c.pool.Stats()
 }
+
+func (c *Client) SAdd(ctx context.Context, key string, data ...[]byte) (err error) {
+	args := []interface{}{"sadd", key}
+	for _, d := range data {
+		args = append(args, d)
+	}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		_, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) SPop(ctx context.Context, key string, cnt int32) (data [][]byte, err error) {
+	args := []interface{}{"spop", key, cnt}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		l, err := conn.r.ReadArrayLenReply()
+		if err != nil {
+			return err
+		}
+
+		data = make([][]byte, l)
+		for i := 0; i < l; i++ {
+			b, err := conn.r.ReadBytesReply()
+			if err != nil {
+				return err
+			}
+			data[i] = b
+		}
+
+		return nil
+	})
+	return
+}
+
+func (c *Client) SCard(ctx context.Context, key string) (card int64, err error) {
+	args := []interface{}{"scard", key}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		card, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) SIsMember(ctx context.Context, key string, data []byte) (result bool, err error) {
+	args := []interface{}{"sismember", key, data}
+
+	var resultInt int64
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		resultInt, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	if resultInt == 1 {
+		result = true
+	}
+	return
+}
+
+func (c *Client) SRem(ctx context.Context, key string, data ...[]byte) (result int64, err error) {
+	args := []interface{}{"srem", key}
+	for _, d := range data {
+		args = append(args, d)
+	}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		result, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) SMembers(ctx context.Context, key string) (items [][]byte, err error) {
+	args := []interface{}{"smembers", key}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		l, err := conn.r.ReadArrayLenReply()
+		if err != nil {
+			return err
+		}
+
+		items = make([][]byte, l)
+		for i := 0; i < l; i++ {
+			b, err := conn.r.ReadBytesReply()
+			if err != nil {
+				return err
+			}
+			items[i] = b
+		}
+
+		return nil
+	})
+	return
+}
