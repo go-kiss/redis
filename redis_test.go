@@ -305,13 +305,13 @@ func TestSet(t *testing.T) {
 	}
 
 	// sadd
-	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("aaa")}); err != nil {
+	if err := c.SAdd(ctx, "foo", []byte("aaa")); err != nil {
 		t.Fatalf("add foo aaa failed, err: %v", err)
 	}
-	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("bbb")}); err != nil {
+	if err := c.SAdd(ctx, "foo", []byte("bbb")); err != nil {
 		t.Fatalf("add foo bbb failed, err: %v", err)
 	}
-	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("ccc")}); err != nil {
+	if err := c.SAdd(ctx, "foo", []byte("ccc")); err != nil {
 		t.Fatalf("add foo ccc failed, err: %v", err)
 	}
 
@@ -321,24 +321,24 @@ func TestSet(t *testing.T) {
 	}
 
 	// sismember
-	if result, err := c.SIsMember(ctx, &Item{Key: "foo", Value: []byte("bbb")}); err != nil || result != true {
+	if result, err := c.SIsMember(ctx, "foo", []byte("bbb")); err != nil || result != true {
 		t.Fatalf("Key: foo, SIsMember: %t; Failed, err: %v", result, err)
 	}
 
 	// spop
 	item, _ := c.SPop(ctx, "foo")
 	set := map[string]bool{"aaa": true, "bbb": true, "ccc": true}
-	exists := set[string(item.Value)]
+	exists := set[string(item)]
 	if !exists {
 		t.Fatal("spop foo failed")
 	}
 
 	// srem
-	if err := c.SAdd(ctx, &Item{Key: "foo", Value: []byte("ddd")}); err != nil {
+	if err := c.SAdd(ctx, "foo", []byte("ddd")); err != nil {
 		t.Fatalf("add foo ddd failed, err: %v", err)
 	}
-	if result, err := c.SRem(ctx, &Item{Key: "foo", Value: []byte("ddd")}); err != nil || result != true {
-		t.Fatalf("Key: foo, SRem: %t; Failed, err: %v", result, err)
+	if result, err := c.SRem(ctx, "foo", []byte("ddd")); err != nil || result == 0 {
+		t.Fatalf("Key: foo, SRem: %d; Failed, err: %v", result, err)
 	}
 
 	// smembers
