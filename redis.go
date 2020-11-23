@@ -664,8 +664,8 @@ func (c *Client) Stats() *pool.Stats {
 }
 
 func (c *Client) SAdd(ctx context.Context, item *Item) (err error) {
-	args := make([]interface{}, 0, 6)
-	args = append(args, "sadd", item.Key, item.Value)
+	args := []interface{}{"sadd", item.Key, item.Value}
+
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
@@ -676,17 +676,15 @@ func (c *Client) SAdd(ctx context.Context, item *Item) (err error) {
 		}
 
 		_, err = conn.r.ReadIntReply()
-		if err != nil {
-			return err
-		}
 
-		return nil
+		return err
 	})
 	return
 }
 
 func (c *Client) SPop(ctx context.Context, key string) (item *Item, err error) {
 	args := []interface{}{"spop", key}
+
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
 			return err
@@ -698,11 +696,112 @@ func (c *Client) SPop(ctx context.Context, key string) (item *Item, err error) {
 
 		var b []byte
 		if b, err = conn.r.ReadBytesReply(); err != nil {
-			item = nil
 			return err
 		}
 
 		item = &Item{Value: b}
+
+		return nil
+	})
+	return
+}
+
+func (c *Client) SCard(ctx context.Context, key string) (card int64, err error) {
+	args := []interface{}{"scard", key}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		card, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	return
+}
+
+func (c *Client) SIsMember(ctx context.Context, item *Item) (result bool, err error) {
+	args := []interface{}{"sismember", item.Key, item.Value}
+
+	var resultInt int64
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		resultInt, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	result = false
+	if resultInt == 1 {
+		result = true
+	}
+	return
+}
+
+func (c *Client) SRem(ctx context.Context, item *Item) (result bool, err error) {
+	args := []interface{}{"srem", item.Key, item.Value}
+
+	var resultInt int64
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		resultInt, err = conn.r.ReadIntReply()
+
+		return err
+	})
+	result = false
+	if resultInt == 1 {
+		result = true
+	}
+	return
+}
+
+func (c *Client) SMembers(ctx context.Context, key string) (items []*Item, err error) {
+	args := []interface{}{"smembers", key}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		l, err := conn.r.ReadArrayLenReply()
+		if err != nil {
+			return err
+		}
+
+		items = make([]*Item, l)
+
+		for i := 0; i < l; i++ {
+			b, err := conn.r.ReadBytesReply()
+			if err == Nil {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			items[i] = &Item{Value: b}
+		}
 
 		return nil
 	})
