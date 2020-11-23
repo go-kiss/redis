@@ -663,8 +663,11 @@ func (c *Client) Stats() *pool.Stats {
 	return c.pool.Stats()
 }
 
-func (c *Client) SAdd(ctx context.Context, key string, data []byte) (err error) {
-	args := []interface{}{"sadd", key, data}
+func (c *Client) SAdd(ctx context.Context, key string, data ...[]byte) (err error) {
+	args := []interface{}{"sadd", key}
+	for _, d := range data {
+		args = append(args, d)
+	}
 
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
@@ -682,8 +685,8 @@ func (c *Client) SAdd(ctx context.Context, key string, data []byte) (err error) 
 	return
 }
 
-func (c *Client) SPop(ctx context.Context, key string) (data []byte, err error) {
-	args := []interface{}{"spop", key}
+func (c *Client) SPop(ctx context.Context, key string, cnt int32) (data [][]byte, err error) {
+	args := []interface{}{"spop", key, cnt}
 
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
@@ -694,8 +697,18 @@ func (c *Client) SPop(ctx context.Context, key string) (data []byte, err error) 
 			return err
 		}
 
-		if data, err = conn.r.ReadBytesReply(); err != nil {
+		l, err := conn.r.ReadArrayLenReply()
+		if err != nil {
 			return err
+		}
+
+		data = make([][]byte, l)
+		for i := 0; i < l; i++ {
+			b, err := conn.r.ReadBytesReply()
+			if err != nil {
+				return err
+			}
+			data[i] = b
 		}
 
 		return nil
@@ -739,15 +752,17 @@ func (c *Client) SIsMember(ctx context.Context, key string, data []byte) (result
 
 		return err
 	})
-	result = false
 	if resultInt == 1 {
 		result = true
 	}
 	return
 }
 
-func (c *Client) SRem(ctx context.Context, key string, data []byte) (result int64, err error) {
-	args := []interface{}{"srem", key, data}
+func (c *Client) SRem(ctx context.Context, key string, data ...[]byte) (result int64, err error) {
+	args := []interface{}{"srem", key}
+	for _, d := range data {
+		args = append(args, d)
+	}
 
 	err = c.do(ctx, args, func(conn *redisConn) error {
 		if err := conn.w.WriteArgs(args); err != nil {
@@ -783,12 +798,8 @@ func (c *Client) SMembers(ctx context.Context, key string) (items [][]byte, err 
 		}
 
 		items = make([][]byte, l)
-
 		for i := 0; i < l; i++ {
 			b, err := conn.r.ReadBytesReply()
-			if err == Nil {
-				continue
-			}
 			if err != nil {
 				return err
 			}
