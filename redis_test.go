@@ -354,3 +354,37 @@ func TestSet(t *testing.T) {
 		t.Logf("Key: foo, SRem: %d; Failed, err: %v", result, err)
 	}
 }
+
+
+func TestHash(t *testing.T) {
+	c := New(Options{
+		Address:  os.Getenv("REDIS_HOST"),
+		PoolSize: 1,
+	})
+
+	testKey := "hashtest"
+
+	if err := c.Del(ctx, testKey); err != nil {
+		t.Fatal("start faild")
+	}
+
+
+
+	// hset
+	added, _ := c.HSet(ctx, testKey, HashValue{"name", "bilibili"}, HashValue{"age", "20"})
+	if added != 2 {
+		t.Fatalf("hset %s failed", testKey)
+	}
+	// hget
+	item, _ := c.HGet(ctx, testKey, "name")
+	if !bytes.Equal(item.Value, []byte("bilibili")) {
+		t.Fatalf("hget %s failed", testKey)
+	}
+
+	// hgetall
+	hgetallItem, _ := c.HGetAll(ctx, testKey)
+	for _, hashValue := range hgetallItem.HashValues {
+		t.Logf("Key: %s, field: %s, value: %s", testKey, hashValue.Field, hashValue.Value)
+	}
+
+}
