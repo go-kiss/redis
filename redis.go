@@ -121,18 +121,13 @@ type Item struct {
 
 	ZSetValues map[string]float64
 
-	HashValues []HashValue
+	HashValues map[string]string
 
 	// Flags 一些 redis 标记位，请参考 Flag 开头的常量定义
 	Flags uint32
 
 	// TTL 缓存时间，秒，0 表示不过期
 	TTL int32
-}
-
-type HashValue struct {
-	Field string
-	Value string
 }
 
 var noDeadline = time.Time{}
@@ -819,12 +814,12 @@ func (c *Client) SMembers(ctx context.Context, key string) (items [][]byte, err 
 }
 
 // Hashes
-func (c *Client) HSet(ctx context.Context, key string, hashValues ...HashValue) (added int64, err error) {
+func (c *Client) HSet(ctx context.Context, key string, hashes map[string]string) (added int64, err error) {
 	args := []interface{}{"hset", key}
 
-	for _, h := range hashValues {
-		args = append(args, h.Field)
-		args = append(args, h.Value)
+	for f, v := range hashes {
+		args = append(args, f)
+		args = append(args, v)
 	}
 
 	err = c.do(ctx, args, func(conn *redisConn) error {
@@ -884,7 +879,7 @@ func (c *Client) HGetAll(ctx context.Context, key string) (item *Item, err error
 		if err != nil {
 			return err
 		}
-		hashValues := make([]HashValue, l/2)
+		hashes := make(map[string] string, l / 2)
 		for i := 0; i < l; i += 2 {
 			field, err := conn.r.ReadBytesReply()
 			if err != nil {
@@ -894,9 +889,9 @@ func (c *Client) HGetAll(ctx context.Context, key string) (item *Item, err error
 			if err != nil {
 				return err
 			}
-			hashValues[i/2] = HashValue{Field: string(field), Value: string(value)}
+			hashes[string(field)] = string(value)
 		}
-		item = &Item{HashValues: hashValues}
+		item = &Item{HashValues: hashes}
 		return nil
 	})
 	return

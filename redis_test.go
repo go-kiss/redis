@@ -355,7 +355,6 @@ func TestSet(t *testing.T) {
 	}
 }
 
-
 func TestHash(t *testing.T) {
 	c := New(Options{
 		Address:  os.Getenv("REDIS_HOST"),
@@ -368,10 +367,8 @@ func TestHash(t *testing.T) {
 		t.Fatal("start faild")
 	}
 
-
-
 	// hset
-	added, _ := c.HSet(ctx, testKey, HashValue{"name", "bilibili"}, HashValue{"age", "20"})
+	added, _ := c.HSet(ctx, testKey, map[string]string{"name": "bilibili", "age": "20"})
 	if added != 2 {
 		t.Fatalf("hset %s failed", testKey)
 	}
@@ -383,8 +380,8 @@ func TestHash(t *testing.T) {
 
 	// hgetall
 	hgetallItem, _ := c.HGetAll(ctx, testKey)
-	for _, hashValue := range hgetallItem.HashValues {
-		t.Logf("Key: %s, field: %s, value: %s", testKey, hashValue.Field, hashValue.Value)
+	for f, v := range hgetallItem.HashValues {
+		t.Logf("Key: %s, field: %s, value: %s", testKey, f, v)
 	}
 
 }
