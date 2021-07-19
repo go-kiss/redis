@@ -121,6 +121,8 @@ type Item struct {
 
 	ZSetValues map[string]float64
 
+	HashValues map[string]string
+
 	// Flags 一些 redis 标记位，请参考 Flag 开头的常量定义
 	Flags uint32
 
@@ -806,6 +808,90 @@ func (c *Client) SMembers(ctx context.Context, key string) (items [][]byte, err 
 			items[i] = b
 		}
 
+		return nil
+	})
+	return
+}
+
+// Hashes
+func (c *Client) HSet(ctx context.Context, key string, hashes map[string]string) (added int64, err error) {
+	args := []interface{}{"hset", key}
+
+	for f, v := range hashes {
+		args = append(args, f)
+		args = append(args, v)
+	}
+
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		added, err = conn.r.ReadIntReply()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return
+}
+
+func (c *Client) HGet(ctx context.Context, key string, field string) (item *Item, err error) {
+	args := []interface{}{"hget", key, field}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		var b []byte
+		if b, err = conn.r.ReadBytesReply(); err != nil {
+			item = nil
+			return err
+		}
+
+		item = &Item{Value: b}
+
+		return nil
+	})
+	return
+}
+
+func (c *Client) HGetAll(ctx context.Context, key string) (item *Item, err error) {
+	args := []interface{}{"hgetall", key}
+	err = c.do(ctx, args, func(conn *redisConn) error {
+		if err := conn.w.WriteArgs(args); err != nil {
+			return err
+		}
+
+		if err := conn.w.Flush(); err != nil {
+			return err
+		}
+
+		l, err := conn.r.ReadArrayLenReply()
+		if err != nil {
+			return err
+		}
+		hashes := make(map[string] string, l / 2)
+		for i := 0; i < l; i += 2 {
+			field, err := conn.r.ReadBytesReply()
+			if err != nil {
+				return err
+			}
+			value, err := conn.r.ReadBytesReply()
+			if err != nil {
+				return err
+			}
+			hashes[string(field)] = string(value)
+		}
+		item = &Item{HashValues: hashes}
 		return nil
 	})
 	return
