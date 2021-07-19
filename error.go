@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/bilibili/redis/protocol"
+	"github.com/go-kiss/redis/protocol"
 )
 
 const Nil = protocol.Nil

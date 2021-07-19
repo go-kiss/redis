@@ -6,7 +6,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/bilibili/redis/util"
+	"github.com/go-kiss/redis/util"
 )
 
 type Writer struct {

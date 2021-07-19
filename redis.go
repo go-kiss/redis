@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/bilibili/net/pool"
-	"github.com/bilibili/redis/protocol"
+	"github.com/go-kiss/net/pool"
+	"github.com/go-kiss/redis/protocol"
 )
 
 const (

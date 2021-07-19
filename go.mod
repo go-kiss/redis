@@ -1,5 +1,5 @@
-module github.com/bilibili/redis
+module github.com/go-kiss/redis
 
 go 1.12
 
-require github.com/bilibili/net/pool v0.0.0-20210719071552-c407c411557d
+require github.com/go-kiss/net/pool v0.0.0-20210719091328-f4192f07e5b8
